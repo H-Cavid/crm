@@ -21,11 +21,6 @@ def registerPage(request):
         if form.is_valid():
             user = form.save()
             username = form.cleaned_data.get('username')
-            group = Group.objects.get(name='customer')
-            user.groups.add(group)
-            Customer.objects.create(
-                user = user,
-            )
             messages.success(request,'Account was created for ' + username)
             return redirect('login')
     context = {
@@ -34,7 +29,7 @@ def registerPage(request):
     return render(request,'accounts/register.html',context)
 
 @unauthenticated_user
-def loginPage(request):
+def loginPage(request):#django documentionda bele yazilib https://docs.djangoproject.com/en/3.2/topics/auth/default/
     if request.method == 'POST':
         username=request.POST.get('username')
         password=request.POST.get('password')
@@ -48,11 +43,11 @@ def loginPage(request):
     context ={}
     return render(request,'accounts/login.html',context)
 
-def logoutUser(request):
+def logoutUser(request):#django documentionda bele yazilib https://docs.djangoproject.com/en/3.2/topics/auth/default/
     logout(request)
     return redirect('login')
 
-@login_required(login_url='login')
+@login_required(login_url='login')#documentasiyada yazilib https://docs.djangoproject.com/en/3.2/topics/auth/default/
 @admin_only
 def home(request):
     orders = Order.objects.all()#butun orderleri getiririk

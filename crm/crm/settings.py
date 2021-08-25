@@ -32,7 +32,7 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     'django_filters',
-    'accounts',
+    'accounts.apps.AccountsConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -71,9 +71,20 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'crm.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
+
+# STEPS FOR DJANGO POSTGRESQL DATABSE + AWS RDS
+
+# 1-Download and install PostgreSql & PG ADdmin
+# 2-Login to PG admin & Create DATABASE
+# 3-Connect database to Django App & run migrations
+# 4-Create database on AWS
+# 5 - Connect to live AWS Database with Pg admin & Django
+
+
+
+
 
 DATABASES = {
     'default': {
@@ -130,3 +141,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'static/images')
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+#SMTP Configuration
+
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'pragmatechbuild@gmail.com'
+EMAIL_HOST_PASSWORD = 'salam.123.#.@'
