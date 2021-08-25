@@ -1,55 +1,59 @@
+from .decorators import *
 from django.http import HttpResponse
 from django.shortcuts import render,redirect
 from.models import *
-from .forms import OrderForm,RegisterForm
+from .forms import OrderForm,RegisterForm,CustomerForm
 from django.forms import inlineformset_factory
 from .filters import OrderFilter
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
 from django.contrib.auth import authenticate, login,logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import Group
+
 # Create your views here.
 
-
+@unauthenticated_user
 def registerPage(request):
-    if request.user.is_authenticated:
-        return redirect('home')
-    else:
-        form = RegisterForm()
-        if request.method == 'POST':
-            form = RegisterForm(request.POST)
-            if form.is_valid():
-                form.save()
-                user = form.cleaned_data.get('username')
-                messages.success(request,'Account was created for ' + user)
-                return redirect('login')
-        context = {
-        'form':form,
-        }
-        return render(request,'accounts/register.html',context)
+    form = RegisterForm()
+    if request.method == 'POST':
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            username = form.cleaned_data.get('username')
+            group = Group.objects.get(name='customer')
+            user.groups.add(group)
+            Customer.objects.create(
+                user = user,
+            )
+            messages.success(request,'Account was created for ' + username)
+            return redirect('login')
+    context = {
+    'form':form,
+    }
+    return render(request,'accounts/register.html',context)
 
+@unauthenticated_user
 def loginPage(request):
-    if request.user.is_authenticated:
-        return redirect('home')
-    else:
-        if request.method == 'POST':
-            username=request.POST.get('username')
-            password=request.POST.get('password')
-            user = authenticate(request, username = username,password=password)
-            if user is not None:
-                login(request,user)
-                return redirect('home')
-            else:
-                messages.info(request,'Username Or password is incorrect!')
-                
-        context ={}
-        return render(request,'accounts/login.html',context)
+    if request.method == 'POST':
+        username=request.POST.get('username')
+        password=request.POST.get('password')
+        user = authenticate(request, username = username,password=password)
+        if user is not None:
+            login(request,user)
+            return redirect('home')
+        else:
+            messages.info(request,'Username Or password is incorrect!')
+            
+    context ={}
+    return render(request,'accounts/login.html',context)
 
 def logoutUser(request):
     logout(request)
     return redirect('login')
 
 @login_required(login_url='login')
+@admin_only
 def home(request):
     orders = Order.objects.all()#butun orderleri getiririk
     customer = Customer.objects.all()#butun customerleri getiririk
@@ -68,11 +72,43 @@ def home(request):
     return render(request,'accounts/dashboard.html', context)
 
 @login_required(login_url='login')
+@allowed_users(allowed_roles=['customer'])
+def userPage(request):
+    orders = request.user.customer.order_set.all()
+    totat_orders = orders.count()#butun orderlerin sayini getiririk
+    delivered = orders.filter(status='Delivered').count()#orderleri statusu delivered olanlarin sayini getirir
+    pending = orders.filter(status='Pending').count()#orderlerin icinde statusu pending olanlarin sayini getirir
+    context = {
+        'orders':orders,
+        'totat_orders': totat_orders,
+        'delivered':delivered,
+        'pending':pending,
+        }
+    return render(request,'accounts/user.html' ,context)
+
+@login_required(login_url='login')
+@allowed_users(allowed_roles=['customer'])
+def accountSettings(request):
+    customer = request.user.customer
+    form = CustomerForm(instance=customer)
+    if request.method == 'POST':
+        form = CustomerForm(request.POST,request.FILES,instance=customer)
+        if form.is_valid():
+            form.save()
+
+
+    context= {'form':form}
+    return render(request,'accounts/account_settings.html',context)
+
+
+@login_required(login_url='login')
+@allowed_users(allowed_roles=['admin'])
 def products(request):
     products = Product.objects.all()#butun productlari gosterir
     return render(request,'accounts/products.html',{'products':products})
 
 @login_required(login_url='login')
+@allowed_users(allowed_roles=['admin'])
 def customer(request,pk):
     customer = Customer.objects.get(id=pk)#customerleri id-e gore getirir
     orders = customer.order_set.all()#orderde customer ordere baglanib deye order_set var dir verende
@@ -89,6 +125,7 @@ def customer(request,pk):
     return render(request,'accounts/customer.html',context)
 
 @login_required(login_url='login')
+@allowed_users(allowed_roles=['admin'])
 def create_order(request,pk):#pk=primary key
     OrderFormSet = inlineformset_factory(Customer , Order , fields=('product','status'), extra=10)#Ordere esasen Customer-leri getrecek ve elave 10 sahe
     customer = Customer.objects.get(id=pk)#customerleri id-e gore getirir
@@ -109,6 +146,7 @@ def create_order(request,pk):#pk=primary key
 
 
 @login_required(login_url='login')
+@allowed_users(allowed_roles=['admin'])
 def update_order(request,pk):
     order = Order.objects.get(id=pk)#orderleri id-e gore getiririk sebeb id-e gore update elyirik
     form = OrderForm(instance=order)#formu order classina  gore doldurq
@@ -124,6 +162,7 @@ def update_order(request,pk):
     return render(request,'accounts/order_form.html',context)
 
 @login_required(login_url='login')
+@allowed_users(allowed_roles=['admin'])
 def delete_order(request,pk):
     order = Order.objects.get(id=pk)#id-ne gore silirik
     if request.method == 'POST':
